@@ -1,0 +1,37 @@
+# set .env vars: TZ, DOMAIN_NAME , TOMCAT_USERNAME, TOMCAT_PASSWORD
+version: '3'
+
+services:
+  knime:
+    image: bitnami/tomcat:9.0
+    container_name: knime
+    restart: unless-stopped 
+    environment:
+      - TZ
+      - TOMCAT_USERNAME
+      - TOMCAT_PASSWORD
+      - TOMCAT_ALLOW_REMOTE_MANAGEMENT=no
+      - TOMCAT_ENABLE_AUTH=yes
+      - TOMCAT_ENABLE_AJP=yes
+      - TOMCAT_INSTALL_DEFAULT_WEBAPPS=yes
+    labels:
+      - traefik.enable=true
+      - traefik.http.services.moodle_knime.loadbalancer.server.port=8080
+      - traefik.http.routers.moodle_knime.tls.certresolver=letsencrypt
+      - traefik.frontend.entryPoints=http,https
+      - traefik.http.routers.moodle_knime.rule=Host(`${DOMAIN_NAME}`) && ( PathPrefix(`/knime`) ||  PathPrefix(`/probe`))
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - ./knime/install/probe.war:/app/probe.war
+      - ./knime/apache-tomcat-9.0.68/webapps/knime.war:/app/knime.war
+      - ./knime/apache-tomcat-9.0.68/conf/:/opt/bitnami/tomcat/conf
+      - ./knime/apache-tomcat-9.0.68/lib/:/opt/bitnami/tomcat/lib
+      - ./knime/src:/src
+    working_dir: /src   
+    networks: 
+      - proxy_default   
+      
+networks:
+  proxy_default:
+    external: true
